@@ -40,8 +40,8 @@ def welcome():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        # f"/api/v1.0/<start><br/>"
-        # f"/api/v1.0/<start>/<end><br/>"
+        f"/api/v1.0/[start_date format:yyyy-mm-dd]<br/>"
+        f"/api/v1.0/[start_date format:yyyy-mm-dd]/end_date format:yyyy-mm-dd]<br/>"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -59,9 +59,8 @@ def precipitation():
     last_year_precipitation = []
     for date, prcp in results:
         prcp_d = {}
-        prcp_d["date"] = date
-        prcp_d["prcp"] = prcp
-
+        prcp_d["Date"] = date
+        prcp_d["Precipitation"] = prcp
         last_year_precipitation.append(prcp_d)
         
     return jsonify(last_year_precipitation)
@@ -90,6 +89,55 @@ def tobs():
     session.close()
 
     return jsonify(results)
+
+@app.route("/api/v1.0/<start_date>")
+def start_date(start_date=None):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    # Route accepts the start date as a parameter from the URL
+    # Returns the min, max, and average temperatures calculated from the given start date to the end of the dataset
+    results = session.query(Measurement.date, func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).\
+        group_by(Measurement.date).\
+        all()
+    
+    session.close()
+
+    start_tobs = []
+    for date, min, max, avg in results:
+        start_d = {}
+        start_d["Date"] = date
+        start_d["TMIN"] = min
+        start_d["TMAX"] = max
+        start_d["TAVG"] = avg
+        start_tobs.append(start_d)
+
+    return jsonify(start_tobs)
+
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def start_end_date(start_date=None, end_date=None):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    # Route accepts the start date as a parameter from the URL
+    # Returns the min, max, and average temperatures calculated from the given start date to the end of the dataset
+    results = session.query(Measurement.date, func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.date <= end_date).\
+        group_by(Measurement.date).\
+        all()
+    
+    session.close()
+ 
+    start_end_tobs = []
+    for date,min, max, avg in results:
+        start_end_d = {}
+        start_end_d["Date"] = date
+        start_end_d["TMIN"] = min
+        start_end_d["TMAX"] = max
+        start_end_d["TAVG"] = avg
+        start_end_tobs.append(start_end_d)
+
+    return jsonify(start_end_tobs)
 
 if __name__ == '__main__':
     app.run(debug=True)
